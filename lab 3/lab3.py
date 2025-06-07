@@ -35,9 +35,18 @@ class FileHandler:
     def __init__(self, filename: str):
         self.filename = filename
 
+    #def handle(self, text: str) -> None:
+    #    with open(self.filename, 'a') as f:
+    #        f.write(text + '\n')
+
     def handle(self, text: str) -> None:
-        with open(self.filename, 'a') as f:
-            f.write(text + '\n')
+        try:
+            with open(self.filename, 'a') as f:
+                f.write(text + '\n')
+        except PermissionError:
+            print("Нет прав на чтение файла!")
+        except IOError as e:
+            print(f"Ошибка ввода-вывода: {e}")
 
 class SocketHandler:
 
@@ -54,8 +63,17 @@ class SocketHandler:
         except:
             raise Exception("Error while sending data")
     '''
+    #def handle(self, text: str) -> None:
+    #    print(f"\033[94m[SOCKETLOG] {text}\033[0m") #example
+
     def handle(self, text: str) -> None:
-        print(f"\033[94m[SOCKETLOG] {text}\033[0m") #example
+        try:
+            #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            #    s.connect((self.host, self.port))
+            #    s.sendall(text + '\n')
+            print(f"\033[94m[SOCKETLOG] {text}\033[0m")  #example
+        except socket.error as e:
+            print(f"Ошибка сокета: {e}")
 
 class SyslogHandler:
     def handle(self, text: str) -> None:
