@@ -1,0 +1,18 @@
+[
+  {
+    "id": 0,
+    "name": "Matthew Shtogrin",
+    "login": "JankFank",
+    "password": "qwerty12345",
+    "email": "iam@jankfank.ru",
+    "address": false
+  },
+  {
+    "id": 1,
+    "name": "Mikhail Vereshagin",
+    "login": "Boss",
+    "password": "bfu4life",
+    "email": false,
+    "address": false
+  }
+]
