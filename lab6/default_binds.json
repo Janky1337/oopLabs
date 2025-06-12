@@ -1,0 +1,25 @@
+{
+    "text": "",
+    "volume": 0,
+    "media_player": false,
+    "key_binds": {
+        "ctrl++": {
+            "class": "VolumeUpCommand",
+            "state": {
+                "amount": 20
+            }
+        },
+        "ctrl+-": {
+            "class": "VolumeDownCommand",
+            "state": {
+                "amount": 20
+            }
+        },
+        "ctrl+p": {
+            "class": "MediaPlayerCommand",
+            "state": {}
+        },
+        "undo": null,
+        "redo": null
+    }
+}
