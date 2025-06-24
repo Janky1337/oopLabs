@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Any, Dict
 import json
 
 text = ""
@@ -92,79 +92,26 @@ class MediaPlayerCommand(Command):
 #endregion
 
 class Memento:
-    def __init__(self, state: dict) -> None:
+    def __init__(self, state: Dict[str, Any]) -> None:
         self.state = state
 
     @classmethod
-    def get_data(cls, keyboard):
-        global text
-        global volume
-        global media_player
-
-        key_binds = {}
-        for key, command in keyboard.key_binds.items():
-            if command is None:
-                key_binds[key] = None
-            else:
-                key_binds[key] = {
-                    'class': str(command.__class__.__name__),
-                    'state': command.__dict__.copy()
-                }
-
-        return {
-            'text': text,
-            'volume': volume,
-            'media_player': media_player,
-            'key_binds': key_binds,
-            'back_history': [command["key"] for command in keyboard.back_history],
-            'forward_history': [command["key"] for command in keyboard.forward_history]
-            }
-
-    @classmethod
-    def KeybordStateSaver(cls, keyboard, filename: str = binds_file) -> bool:
-        data_served = cls.get_data(keyboard)
-        try:
-            with open(filename, "w") as f:
-                json.dump(data_served, f, indent=4)
-        except Exception as e:
-            print(f"Error saving state: {e}")
-
-    @classmethod
-    def state_load(cls, keyboard, filename: str = binds_file) -> bool:
+    def file_load(cls, filename: str):
         try:
             with open(filename, "r") as f:
                 state = json.load(f)
+            return cls(state)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            return None
 
-            global text
-            global volume
-            global media_player
-            text = state['text']
-            volume = state['volume']
-            media_player = state['media_player']
-            class_names = {cls.__name__: cls for cls in Command.__subclasses__()}
-
-            keyboard.key_binds.clear()
-            for key, command_data in state.get('key_binds', {}).items():
-                if command_data is None:
-                    keyboard.key_binds[key] = None
-                else:
-                    command = class_names[command_data['class']](**command_data['state'])
-                    keyboard.key_binds[key] = command
-
-            keyboard.back_history = [
-                {"key": key, "command": keyboard.key_binds[key]}
-                for key in state.get('back_history', [])
-                if key in keyboard.key_binds.keys() and keyboard.key_binds[key] is not None
-            ]
-
-            keyboard.forward_history = [
-                {"key": key, "command": keyboard.key_binds[key]}
-                for key in state.get('forward_history', [])
-                if key in keyboard.key_binds.keys() and keyboard.key_binds[key] is not None
-            ]
+    def file_save(self, filename: str) -> bool:
+        try:
+            with open(filename, "w") as f:
+                json.dump(self.state, f, indent=4)
             return True
-        except (FileNotFoundError, KeyError, AttributeError) as e:
-            print(f"Error loading state: {e}")
+        except Exception as e:
+            print(f"ERROR: {e}")
             return False
 
 class Keyboard:
@@ -173,15 +120,13 @@ class Keyboard:
         self.back_history: list[dict[str, Command]] = []
         self.forward_history: list[dict[str, Command]] = []
 
-        try:
-            self._state_load(binds_file)
-        except:
-            self.back_to_default_binds()
+        if (self._state_load(binds_file) == 1): pass
+        else: self.back_to_default_binds()
 
     def back_to_default_binds(self) -> None:
         self.logger(essential="Back to default binds")
         self._state_load(filename=default_binds_file)
-        self._KeybordStateSaver()
+        self._state_save()
 
     def key_bind(self, key: str, command: Optional[Command]) -> None:
         self.key_binds[key] = command
@@ -230,15 +175,73 @@ class Keyboard:
         self.back_history.append(command)
         self.logger(command = "redo", message = result)
 
-    def _KeybordStateSaver(self, filename: str = binds_file) -> None:
-        if Memento.KeybordStateSaver(self, filename):
-            self.logger(essential = "State saved")
+    def get_state(self) -> Dict[str, Any]:
+        global text, volume, media_player
 
-    def _get_data(self):
-        return Memento.get_data(self)
+        key_binds = {}
+        for key, command in self.key_binds.items():
+            if command is None:
+                key_binds[key] = None
+            else:
+                key_binds[key] = {
+                    'class': command.__class__.__name__,
+                    'state': command.__dict__.copy()
+                }
 
-    def _state_load(self, filename: str=binds_file) -> bool:
-        return Memento.state_load(self, filename)
+        return {
+            'text': text,
+            'volume': volume,
+            'media_player': media_player,
+            'key_binds': key_binds,
+            'back_history': [cmd["key"] for cmd in self.back_history],
+            'forward_history': [cmd["key"] for cmd in self.forward_history]
+        }
+
+    def set_state(self, state: Dict[str, Any]) -> bool:
+        global text, volume, media_player
+
+        try:
+            text = state['text']
+            volume = state['volume']
+            media_player = state['media_player']
+
+            class_names = {cls.__name__: cls for cls in Command.__subclasses__()}
+
+            self.key_binds.clear()
+            for key, cmd_data in state.get('key_binds', {}).items():
+                if cmd_data is None:
+                    self.key_binds[key] = None
+                else:
+                    cls = class_names[cmd_data['class']]
+                    self.key_binds[key] = cls(**cmd_data['state'])
+
+            self.back_history = [
+                {"key": key, "command": self.key_binds[key]}
+                for key in state.get('back_history', [])
+                if key in self.key_binds and self.key_binds[key] is not None
+            ]
+
+            self.forward_history = [
+                {"key": key, "command": self.key_binds[key]}
+                for key in state.get('forward_history', [])
+                if key in self.key_binds and self.key_binds[key] is not None
+            ]
+            return True
+        except Exception as e:
+            print(f"Error setting state: {e}")
+            return False
+
+    def _state_save(self, filename: str = binds_file) -> None:
+        memento = Memento(self.get_state())
+        if memento.file_save(filename):
+            self.logger(essential="State saved")
+
+    def _state_load(self, filename: str = binds_file) -> bool:
+        memento = Memento.file_load(filename)
+        if memento and self.set_state(memento.state):
+            self.logger(essential="State loaded")
+            return True
+        return False
 
 #actual code
 keyboard = Keyboard()
@@ -256,4 +259,4 @@ keyboard.press("d")
 keyboard.press("undo")
 keyboard.press("undo")
 
-keyboard._KeybordStateSaver()
+keyboard._state_save()
