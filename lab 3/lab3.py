@@ -20,10 +20,17 @@ class SimpleLogFilter:
 
 class ReLogFilter:
     def __init__(self, pattern: str):
-        self.pattern = re.compile(pattern)
+        try:
+            self.pattern = re.compile(pattern)
+        except re.error as e:
+            print(f"ERROR: {e}")
 
     def match(self, text: str) -> bool:
-        return bool(self.pattern.search(text))
+        try:
+            return bool(self.pattern.search(text))
+        except (AttributeError, TypeError) as e:
+            print(f"ERROR: {e}")
+            return False
 #endregion
 
 #region Handlers
