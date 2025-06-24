@@ -156,3 +156,53 @@ if injector._registrations[DifferenceProtocol]['life_style'] == LifeStyle.PER_RE
         print(diff1.exec(7))
         diff2 = injector.get_instance(DifferenceProtocol)
         print(f"Сравнение PerRequest: {diff1 == diff2}")
+
+
+print()
+print("Создание через фабрику")
+def example_service():
+    #тут может быть некоторая логика
+    print("!", end='')
+    return DifferenceFromSquare()
+
+injector.register(DifferenceProtocol, factory_method=example_service, life_style=LifeStyle.SCOPED)
+
+with injector.scope():
+    factory_diff1 = injector.get_instance(DifferenceProtocol)
+    print(factory_diff1.exec(4))
+    factory_diff2 = injector.get_instance(DifferenceProtocol)
+    print(f"Сравнение Scoped фабричных объектов: {factory_diff1 == factory_diff2}")
+factory_diff3 = injector.get_instance(DifferenceProtocol)
+print(f"Сравнение Scoped фабричных объектов: {factory_diff1 == factory_diff3}")
+
+
+print()
+print("Регистрации объекта с непустым конструктором")
+class ExampleClass:
+    def __init__(self, multiplier: MultiplyProtocol, mult: float):
+        self.multiplier = multiplier
+        self.mult = mult
+
+    def calculate(self, num: float) -> float:
+        return self.multiplier.exec(num) * self.mult
+
+def create_example_class(injector: Injector) -> ExampleClass:
+    multiplier = injector.get_instance(MultiplyProtocol)
+    return ExampleClass(
+        multiplier=multiplier,
+        mult=2.5,
+    )
+
+injector.register(
+    ExampleClass,
+    life_style=LifeStyle.SCOPED,
+    factory_method=lambda: create_example_class(injector)
+)
+
+with injector.scope():
+    co1 = injector.get_instance(ExampleClass)
+    print(co1.calculate(3))
+    co2 = injector.get_instance(ExampleClass)
+    print(f"Сравнение Scoped: {co1 == co2}")
+co3 = injector.get_instance(ExampleClass)
+print(f"Сравнение Scoped: {co1 == co3}")
